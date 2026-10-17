@@ -1,0 +1,12 @@
+.vscode/**
+src/**
+node_modules/**
+**/*.map
+esbuild.js
+tsconfig.json
+vitest.config.ts
+.gitignore
+package-lock.json
+*.vsix
+design-impact.html
+.superpowers/**

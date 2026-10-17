@@ -1,0 +1,190 @@
+{
+  "name": "redline",
+  "displayName": "Redline",
+  "description": "对照两个本地 Git 分支，标出改动",
+  "version": "0.1.16",
+  "publisher": "local",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jianfengye/redline.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0",
+    "node": ">=18"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:redline.changes",
+    "onView:redline.impact"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "redline.open",
+        "title": "打开分支比对",
+        "category": "Redline"
+      },
+      {
+        "command": "redline.refresh",
+        "title": "刷新",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "redline.expandAll",
+        "title": "全部展开",
+        "icon": "$(expand-all)"
+      },
+      {
+        "command": "redline.pickBranch",
+        "title": "选择分支"
+      },
+      {
+        "command": "redline.openChange",
+        "title": "打开变更文件"
+      },
+      {
+        "command": "redline.toggleSplit",
+        "title": "切换双栏比对",
+        "icon": "$(diff)"
+      },
+      {
+        "command": "redline.restoreSingle",
+        "title": "恢复单栏比对",
+        "icon": "$(file)"
+      },
+      {
+        "command": "redline.pickFolder",
+        "title": "选择仓库",
+        "icon": "$(folder)"
+      },
+      {
+        "command": "redline.showImpact",
+        "title": "查看影响面",
+        "category": "Redline"
+      },
+      {
+        "command": "redline.showImpactAtCursor",
+        "title": "影响面",
+        "category": "Redline"
+      },
+      {
+        "command": "redline.copyRelativePath",
+        "title": "复制相对路径"
+      },
+      {
+        "command": "redline.copyAbsolutePath",
+        "title": "复制绝对路径"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "redline",
+          "title": "Redline",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "redline": [
+        {
+          "id": "redline.changes",
+          "name": "变更文件"
+        },
+        {
+          "id": "redline.impact",
+          "name": "影响面"
+        }
+      ]
+    },
+    "submenus": [
+      {
+        "id": "redline.editorContext",
+        "label": "Redline"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "redline.toggleSplit",
+          "when": "view == redline.changes && !redline.splitMode",
+          "group": "navigation@1"
+        },
+        {
+          "command": "redline.restoreSingle",
+          "when": "view == redline.changes && redline.splitMode",
+          "group": "navigation@1"
+        },
+        {
+          "command": "redline.refresh",
+          "when": "view == redline.changes",
+          "group": "navigation@2"
+        },
+        {
+          "command": "redline.pickFolder",
+          "when": "view == redline.changes && redline.multiRoot",
+          "group": "navigation@3"
+        },
+        {
+          "command": "redline.expandAll",
+          "when": "view == redline.changes",
+          "group": "navigation@4"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "redline.copyRelativePath",
+          "when": "view == redline.changes && viewItem =~ /^change-/",
+          "group": "1_copy@1"
+        },
+        {
+          "command": "redline.copyAbsolutePath",
+          "when": "view == redline.changes && viewItem =~ /^change-/",
+          "group": "1_copy@2"
+        }
+      ],
+      "editor/context": [
+        {
+          "submenu": "redline.editorContext",
+          "when": "redline.reviewEditor",
+          "group": "navigation@20"
+        }
+      ],
+      "redline.editorContext": [
+        {
+          "command": "redline.showImpactAtCursor",
+          "when": "redline.reviewEditor",
+          "group": "1_impact"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "redline.toggleSplit",
+          "when": "redline.hasSelection && !redline.splitMode",
+          "group": "navigation"
+        },
+        {
+          "command": "redline.restoreSingle",
+          "when": "redline.hasSelection && redline.splitMode",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.25.1",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  }
+}

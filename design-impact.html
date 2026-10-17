@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Redline · 影响面设计</title>
+<style>
+  :root {
+    --bg:#1e1e1e; --panel:#252526; --panel2:#2d2d30; --border:#3c3c3c;
+    --text:#d4d4d4; --dim:#9a9a9a; --faint:#6a6a6a; --accent:#4fc3f7;
+    --add-bg:#1b3a2a; --add-edge:#3fb950; --mod-bg:#3a2f1b; --mod-edge:#d29922;
+    --low:#3fb950; --mid:#d29922; --high:#f85149; --entry:#c586c0; --target:#4fc3f7; --shared:#6a9955;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,"PingFang SC","Segoe UI",sans-serif;background:var(--bg);color:var(--text);font-size:13px;}
+  .topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--border);}
+  .logo{width:22px;height:22px;border-radius:5px;background:linear-gradient(135deg,var(--accent),#7c4dff);display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;}
+  .topbar h1{font-size:13px;margin:0;font-weight:600;}
+  .topbar .sub{color:var(--dim);font-size:12px;}
+  .main{display:grid;grid-template-columns:1fr 430px;height:calc(100vh - 47px);}
+  .editor{background:var(--bg);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+  .tabs{display:flex;background:var(--panel);border-bottom:1px solid var(--border);}
+  .tab{padding:8px 14px;color:var(--dim);border-right:1px solid var(--border);font-size:12px;}
+  .tab.active{color:var(--text);background:var(--bg);}
+  .code{flex:1;overflow:auto;padding:8px 0;font-family:"SF Mono",Menlo,Consolas,monospace;font-size:12.5px;line-height:1.7;}
+  .row{display:grid;grid-template-columns:48px 58px 1fr;align-items:start;}
+  .ln{text-align:right;color:var(--faint);padding-right:10px;user-select:none;}
+  .gutter{display:flex;align-items:center;justify-content:center;padding-top:2px;}
+  .badge{font-size:10px;font-weight:600;border-radius:9px;padding:1px 6px;font-family:-apple-system,sans-serif;cursor:pointer;border:1px solid transparent;}
+  .badge.high{background:rgba(248,81,73,.18);color:var(--high);border-color:rgba(248,81,73,.4);}
+  .badge.mid{background:rgba(210,153,34,.18);color:var(--mid);border-color:rgba(210,153,34,.4);}
+  .badge.low{background:rgba(63,185,80,.16);color:var(--low);border-color:rgba(63,185,80,.4);}
+  .badge.none{background:transparent;color:var(--faint);border-color:var(--border);}
+  .badge.pending{background:transparent;color:var(--faint);border-style:dashed;}
+  .cache{margin-top:8px;font-size:11px;color:var(--shared);}
+  .badge.sel{outline:1px solid #fff;outline-offset:1px;}
+  .src{white-space:pre;padding-right:16px;}
+  .row.add{background:var(--add-bg);box-shadow:inset 2px 0 0 var(--add-edge);}
+  .row.mod{background:var(--mod-bg);box-shadow:inset 2px 0 0 var(--mod-edge);}
+  .row.add .ln,.row.mod .ln{color:var(--text);}
+  .panel{background:var(--panel);overflow:auto;display:flex;flex-direction:column;}
+  .phead{padding:14px 16px;border-bottom:1px solid var(--border);}
+  .fn{font-size:15px;font-weight:600;color:var(--target);}
+  .fnfile{color:var(--dim);font-size:11px;margin-top:3px;font-family:"SF Mono",Menlo,monospace;}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;}
+  .stat{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;}
+  .stat .n{font-size:18px;font-weight:700;}
+  .stat .l{font-size:10px;color:var(--dim);margin-top:2px;}
+  .tier{margin-top:10px;font-size:12px;}
+  .tier .t{display:inline-block;padding:2px 8px;border-radius:4px;font-weight:600;}
+  .tier.high .t{background:rgba(248,81,73,.18);color:var(--high);}
+  .tier.mid .t{background:rgba(210,153,34,.18);color:var(--mid);}
+  .tier.low .t{background:rgba(63,185,80,.16);color:var(--low);}
+  .sect{padding:12px 16px;border-bottom:1px solid var(--border);}
+  .sect h3{font-size:11px;margin:0 0 10px;color:var(--dim);text-transform:letter-spacing:.5px;font-weight:600;}
+  .path{margin-bottom:14px;}
+  .path:last-child{margin-bottom:0;}
+  .path .root{font-size:10px;color:var(--entry);margin-bottom:6px;font-weight:600;}
+  .node{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;background:var(--panel2);border:1px solid var(--border);margin-bottom:5px;cursor:pointer;}
+  .node:hover{border-color:var(--accent);}
+  .node .nm{font-weight:600;}
+  .node .fl{color:var(--faint);font-size:10px;font-family:"SF Mono",Menlo,monospace;margin-left:auto;}
+  .node.entry{border-color:rgba(197,134,192,.5);}
+  .node.entry .nm{color:var(--entry);}
+  .node.target{border-color:var(--target);background:rgba(79,195,247,.1);}
+  .node.target .nm{color:var(--target);}
+  .node.shared .tag{font-size:9px;color:var(--shared);border:1px solid var(--shared);border-radius:3px;padding:0 4px;}
+  .arrow{color:var(--faint);text-align:center;font-size:11px;line-height:1;margin:0 0 4px 14px;}
+  .ovw{padding:12px 16px;}
+  .ovw h3{font-size:11px;margin:0 0 10px;color:var(--dim);font-weight:600;}
+  .och{display:grid;grid-template-columns:1fr auto auto 60px;gap:8px;align-items:center;padding:7px 8px;border-radius:5px;cursor:pointer;}
+  .och:hover{background:var(--panel2);}
+  .och .fn2{font-weight:600;}
+  .och .fl2{color:var(--faint);font-size:10px;font-family:"SF Mono",Menlo,monospace;}
+  .och .b2{font-size:10px;font-weight:600;border-radius:9px;padding:1px 6px;}
+  .note{padding:14px 16px;color:var(--dim);font-size:11.5px;line-height:1.7;border-top:1px solid var(--border);}
+  .note b{color:var(--text);}
+  .note code{background:var(--panel2);padding:1px 5px;border-radius:3px;font-family:"SF Mono",Menlo,monospace;color:var(--accent);font-size:10.5px;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="logo">R</div>
+  <h1>Redline · 影响面</h1>
+  <span class="sub">改动行 → 所在函数 → 往上追到顶层入口 → 数入口、数层数</span>
+</div>
+<div class="main">
+  <div class="editor">
+    <div class="tabs"><div class="tab active">rpc_space_pay_abtest.go</div><div class="tab">rpc_activity_banner.go</div></div>
+    <div class="code" id="code"></div>
+  </div>
+  <div class="panel" id="panel"></div>
+</div>
+<script>
+const changes = {
+  c1: {
+    fn: "SpacePayAbtest", file: "rpc/rpc_space_pay_abtest.go:42",
+    entries: 3, depth: 3, paths: 3, tier: "high",
+    trees: [
+      { root: "HandleUserSpace（HTTP 入口）", chain: [
+        { name: "SpacePayAbtest", file: "rpc_space_pay_abtest.go:42", target: true } ] },
+      { root: "HandleBusinessSpaceWarning（RPC 入口）", chain: [
+        { name: "CheckRoleAuth", file: "rpc_common_service_role_auth.go:88", shared: true },
+        { name: "SpacePayAbtest", file: "rpc_space_pay_abtest.go:42", target: true } ] },
+      { root: "CronSpaceWarning（定时任务入口）", chain: [
+        { name: "CheckRoleAuth", file: "rpc_common_service_role_auth.go:88", shared: true },
+        { name: "SpacePayAbtest", file: "rpc_space_pay_abtest.go:42", target: true } ] }
+    ]
+  },
+  c2: {
+    fn: "buildPayText", file: "rpc/rpc_space_pay_abtest.go:71",
+    entries: 3, depth: 4, paths: 3, tier: "high",
+    trees: [
+      { root: "HandleUserSpace（HTTP 入口）", chain: [
+        { name: "SpacePayAbtest", file: "rpc_space_pay_abtest.go:38" },
+        { name: "buildPayText", file: "rpc_space_pay_abtest.go:71", target: true } ] },
+      { root: "HandleBusinessSpaceWarning（RPC 入口）", chain: [
+        { name: "CheckRoleAuth", file: "rpc_common_service_role_auth.go:88", shared: true },
+        { name: "SpacePayAbtest", file: "rpc_space_pay_abtest.go:38" },
+        { name: "buildPayText", file: "rpc_space_pay_abtest.go:71", target: true } ] },
+      { root: "CronSpaceWarning（定时任务入口）", chain: [
+        { name: "CheckRoleAuth", file: "rpc_common_service_role_auth.go:88", shared: true },
+        { name: "SpacePayAbtest", file: "rpc_space_pay_abtest.go:38" },
+        { name: "buildPayText", file: "rpc_space_pay_abtest.go:71", target: true } ] }
+    ]
+  },
+  c3: {
+    fn: "GetActivityBanner", file: "rpc/rpc_activity_banner.go:33",
+    entries: 0, depth: 0, paths: 0, tier: "none",
+    dropped: "TestGetActivityBanner",
+    trees: []
+  }
+};
+const codeLines = [
+  [38,"","func SpacePayAbtest(ctx, req) (*Resp, error) {"],
+  [39,"","    uid := req.Uid"],
+  [40,"","    space := loadSpace(uid)"],
+  [41,"c1","    if space.Used * 100 / space.Total > 90 {"],
+  [42,"c1","        abtest := pickAbtest(uid)"],
+  [43,"c1","        text, link := buildPayText(abtest)  // 改：按实验组取文案"],
+  [44,"","        push(uid, text, link)"],
+  [45,"","    }"],
+  [46,"","}"],
+  [47,"",""],
+  [68,"","func buildPayText(abtest Abtest) (string, string) {"],
+  [70,"","    lang := currentLang()"],
+  [71,"c2","    return msg.Map[abtest.TextKey], payLink(abtest)  // 改：补实验组文案 key"],
+  [72,"","}"]
+];
+const computed = new Set();
+let lastHit = "";
+function renderCode() {
+  const el = document.getElementById("code");
+  el.innerHTML = codeLines.map(([ln, cid, src]) => {
+    const ch = cid ? changes[cid] : null;
+    const cls = ch ? (ch.tier === "high" ? "mod" : ch.tier === "none" ? "" : "add") : "";
+    let badge = "";
+    if (ch && computed.has(cid)) {
+      const label = ch.entries === 0 ? "无入口" : `↑${ch.entries}·${ch.depth}`;
+      badge = `<div class="badge ${ch.tier}" data-c="${cid}">${label}</div>`;
+    } else if (ch) {
+      badge = `<div class="badge pending" data-c="${cid}">点我</div>`;
+    }
+    return `<div class="row ${cls}"><div class="ln">${ln}</div><div class="gutter">${badge}</div><div class="src">${esc(src)}</div></div>`;
+  }).join("");
+  el.querySelectorAll(".badge").forEach(b => b.onclick = () => select(b.dataset.c));
+}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function tierLabel(t){return t==="high"?"高影响":t==="mid"?"中影响":t==="none"?"无业务入口":"低影响";}
+function renderPanel(id) {
+  const c = changes[id];
+  const trees = c.trees.length ? c.trees.map((t, i) => {
+    const nodes = t.chain.map(n => {
+      let cls = "node";
+      if (n.target) cls += " target";
+      if (i === 0 && n === t.chain[0] && !n.target) cls += " entry";
+      const tag = n.shared ? `<span class="tag">共享</span>` : "";
+      return `<div class="${cls}"><span class="nm">${n.name}</span>${tag}<span class="fl">${n.file}</span></div>`;
+    }).join(`<div class="arrow">↓</div>`);
+    return `<div class="path"><div class="root">入口 ${i+1} · ${t.root}</div>${nodes}</div>`;
+  }).join("") : `<div class="path">调用者只有 <b>${c.dropped}</b>，测试函数不计入入口。这条改动没有业务调用链。</div>`;
+  document.getElementById("panel").innerHTML = `
+    <div class="phead">
+      <div class="fn">${c.fn}</div>
+      <div class="fnfile">${c.file}</div>
+      <div class="stats">
+        <div class="stat"><div class="n">${c.entries}</div><div class="l">顶层入口</div></div>
+        <div class="stat"><div class="n">${c.depth}</div><div class="l">最深层数</div></div>
+        <div class="stat"><div class="n">${c.paths}</div><div class="l">调用路径</div></div>
+      </div>
+      <div class="tier ${c.tier === "none" ? "low" : c.tier}"><span class="t">${tierLabel(c.tier)}</span></div>
+      <div class="cache">${lastHit}</div>
+    </div>
+    <div class="sect"><h3>调用链（从顶层入口往下到改动）</h3>${trees}</div>
+    <div class="ovw">
+      <h3>按影响面排序的改动（本次 15 文件）</h3>
+      ${overview(id)}
+    </div>
+    <div class="note">
+      <b>点到才算。</b> 改动行一开始只有「点我」。点某一行，才去查它所在的函数。<br>
+      <b>按函数缓存。</b> 第 41、42、43 行都在 <code>SpacePayAbtest</code> 里，第一次点会算，再点另外两行直接用同一份结果，三行徽标一起出现。<br>
+      <b>测试不算入口。</b> <code>Test*</code>、<code>*_test.go</code> 里的调用者丢掉。丢掉之后没有别的入口，就显示「无入口」。<br>
+      <b>徽标 ↑入口·层数。</b> ↑3·3 = 3 个业务入口、最深 3 层。
+    </div>`;
+  document.querySelectorAll(".badge").forEach(b => b.classList.toggle("sel", b.dataset.c === id));
+}
+function overview(sel) {
+  const list = [
+    ["SpacePayAbtest","rpc_space_pay_abtest.go",3,3,"high","c1"],
+    ["CheckRoleAuth","rpc_common_service_role_auth.go",2,2,"mid","c1"],
+    ["HandleUserSpace","rpc_http_user_space.go",1,1,"low","c1"],
+    ["buildPayText","rpc_space_pay_abtest.go",3,4,"high","c2"],
+    ["GetActivityBanner","rpc_activity_banner.go",0,0,"none","c3"]
+  ];
+  return list.map(([fn,f,e,d,t,id]) => `
+    <div class="och" onclick="select('${id}')" style="${id===sel?'background:var(--panel2);':''}">
+      <span class="fn2">${fn}</span>
+      <span class="fl2">${f}</span>
+      <span class="b2">${e === 0 ? "无入口" : "↑" + e + "·" + d}</span>
+      <span style="color:var(--faint);font-size:10px;">${tierLabel(t)}</span>
+    </div>`).join("");
+}
+function select(id){
+  const hit = computed.has(id);
+  computed.add(id);
+  lastHit = hit
+    ? `缓存命中 · ${changes[id].fn} 的每一行改动共用这一次结果`
+    : `刚计算 · 已写入 ${changes[id].fn} 的缓存`;
+  renderCode();
+  renderPanel(id);
+}
+renderCode();
+document.getElementById("panel").innerHTML = `<div class="note">点左侧改动行的「点我」。同一函数里的多行只会计算一次。</div>`;
+</script>
+</body>
+</html>
